@@ -1,0 +1,28 @@
+# systemd unit file for the mdilworth.com API backend
+# Install:
+#   sudo cp mdilworth-api.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now mdilworth-api
+#
+# Logs:
+#   journalctl -u mdilworth-api -f
+
+[Unit]
+Description=mdilworth.com API (Flask/Gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/real-estate-site/backend
+EnvironmentFile=/opt/real-estate-site/backend/.env
+ExecStart=/opt/real-estate-site/backend/venv/bin/gunicorn \
+    --bind 127.0.0.1:5000 \
+    --workers 2 \
+    --access-logfile - \
+    app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
