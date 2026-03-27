@@ -1,5 +1,5 @@
 // js/forms.js
-const API_BASE = "https://api.mdilworth.com";
+const API_BASE = "https://homes.mdilworth.com";
 
 function showAlert(el, message, type) {
   el.classList.remove("d-none", "alert-success", "alert-danger");
