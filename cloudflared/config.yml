@@ -11,10 +11,10 @@
 #   homes.mdilworth.com  CNAME  <TUNNEL-UUID>.cfargotunnel.com   [proxied / orange cloud ✓]
 
 tunnel: cccc-notes
-credentials-file: /etc/cloudflared/cccc-notes.json
+credentials-file: /home/madmatter/.cloudflared/600ae3b0-e704-430e-9a19-eee13bc83a3b.json
 
 ingress:
   - hostname: homes.mdilworth.com
-    service: http://localhost:8080
+    service: http://localhost:8081
   # Catch-all — cloudflared requires this last rule
   - service: http_status:404
