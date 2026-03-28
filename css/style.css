@@ -76,7 +76,7 @@ img { max-width: 100%; height: auto; }
   gap: 0.6rem;
 }
 .navbar-brand .brand-logo {
-  height: 52px;
+  height: 80px;
   width: auto;
   display: block;
 }
@@ -132,6 +132,13 @@ img { max-width: 100%; height: auto; }
   background: var(--light-bg);
   border-color: var(--gray-light);
   color: var(--dark);
+}
+
+/* Hero logo above heading */
+.hero-logo {
+  height: 90px;
+  width: auto;
+  display: block;
 }
 
 /* === Home Hero === */
@@ -421,6 +428,14 @@ section:nth-of-type(even) {
   padding-top: 1.25rem;
   font-size: 0.8rem;
   color: #6B7280;
+}
+
+.footer-logo {
+  height: 60px;
+  width: auto;
+  display: block;
+  filter: brightness(0) invert(1); /* invert to white for dark footer background */
+  opacity: 0.9;
 }
 
 /* === Blog Card === */
