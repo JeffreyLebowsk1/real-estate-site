@@ -39,12 +39,12 @@ sudo systemctl restart cloudflared mdilworth-api caddy
 ### Continuous deployment (GitHub Actions)
 
 Every push to `main` automatically deploys to the Jetson via the
-`.github/workflows/deploy.yml` workflow.  Add the following secrets to the
-repository (**Settings → Secrets and variables → Actions**):
+`.github/workflows/deploy.yml` workflow.  The SSH host is hard-coded to
+`jetson.mdilworth.com`.  Add the following secrets to the repository
+(**Settings → Secrets and variables → Actions**):
 
 | Secret | Description |
 |---|---|
-| `JETSON_HOST` | Hostname or IP address of the Jetson Orin Nano |
 | `JETSON_USER` | SSH username on the Jetson (e.g. `jetson`) |
 | `JETSON_SSH_KEY` | Private SSH key whose public half is in `~/.ssh/authorized_keys` on the Jetson |
 | `JETSON_PORT` | *(optional)* SSH port — defaults to `22` |
