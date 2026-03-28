@@ -61,9 +61,8 @@ function renderNav(el) {
     <div class="container">
       <a class="navbar-brand" href="/">
         <img src="${LOGO_SRC}" class="brand-logo" alt="${FIRM_NAME} logo">
-        <span class="brand-text">Matt Dilworth<br><small>REALTOR&reg; &middot; ${FIRM_NAME}</small></span>
       </a>
-      <a href="/contact.html" class="btn btn-primary d-none d-lg-inline-block ms-auto me-3">GET IN TOUCH</a>
+      <a href="/contact.html" class="btn btn-outline-light d-none d-lg-inline-block ms-auto me-3">GET IN TOUCH</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
               aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>

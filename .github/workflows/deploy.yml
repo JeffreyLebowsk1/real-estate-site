@@ -1,40 +1,73 @@
 name: Deploy to Jetson
 
+# Trigger an immediate deployment to the Jetson Orin Nano whenever commits
+# land on main (merges, direct pushes).  The workflow calls the Jetson's
+# /webhook/deploy endpoint, which:
+#   1. Runs `git pull --rebase` on the Jetson repo.
+#   2. Restarts the Flask API (`mdilworth-api`) if any backend files changed.
+#   3. Reloads Caddy if the Caddyfile changed.
+#
+# Required GitHub repository secrets:
+#   JETSON_WEBHOOK_SECRET  — HMAC secret (must match GITHUB_WEBHOOK_SECRET
+#                            in backend/.env on the Jetson).
+#   JETSON_WEBHOOK_URL     — Full URL of the endpoint, e.g.
+#                            https://homes.mdilworth.com/webhook/deploy
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual deploy (optional)"
+        required: false
+        default: ""
 
 jobs:
   deploy:
-    name: SSH deploy to Jetson Orin Nano
+    name: Trigger Jetson deployment
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://homes.mdilworth.com
     permissions: {}
+    # Only deploy from the canonical repository so forks don't fail on
+    # missing secrets.
+    if: github.repository == 'JeffreyLebowsk1/real-estate-site'
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: jetson.mdilworth.com
-          username: ${{ secrets.JETSON_USER }}
-          key: ${{ secrets.JETSON_SSH_KEY }}
-          port: ${{ secrets.JETSON_PORT || 22 }}
-          script: |
-            set -e
-
-            REPO="$HOME/real-estate-site"
-            if [ ! -d "$REPO" ]; then
-              echo "ERROR: $REPO not found. Clone the repo to $REPO first." >&2
-              exit 1
-            fi
-
-            cd "$REPO"
-
-            echo "==> Pulling latest code from main…"
-            git pull origin main || {
-              echo "ERROR: git pull failed (merge conflict, network issue, or auth error)." >&2
-              exit 1
-            }
-
-            echo "==> Running deploy script…"
-            bash backend/deploy.sh
+      - name: Send deploy webhook
+        env:
+          WEBHOOK_SECRET: ${{ secrets.JETSON_WEBHOOK_SECRET }}
+          WEBHOOK_URL: ${{ secrets.JETSON_WEBHOOK_URL }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          # Guard: skip gracefully if the required secrets are not configured
+          if [[ -z "$WEBHOOK_SECRET" || -z "$WEBHOOK_URL" ]]; then
+            echo "::warning::JETSON_WEBHOOK_SECRET or JETSON_WEBHOOK_URL is not configured — skipping deploy webhook."
+            exit 0
+          fi
+          # Build a minimal push-event payload
+          PAYLOAD=$(printf '{"ref":"%s","after":"%s","pusher":{"name":"%s"}}' \
+            "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_ACTOR")
+          # Compute HMAC-SHA256 signature (matches Flask _verify_github_signature)
+          SIGNATURE="sha256=$(printf '%s' "$PAYLOAD" \
+            | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" \
+            | awk '{print $NF}')"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -H "X-Hub-Signature-256: $SIGNATURE" \
+            --data-raw "$PAYLOAD")
+          echo "Webhook response status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Webhook call failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Deploy webhook delivered — Jetson is pulling latest commits."
