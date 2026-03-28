@@ -1,12 +1,13 @@
 // js/components.js
 // Shared site chrome - include on every page
 
+const FIRM_NAME = "Sanford Real Estate";
 const SITE_NAME = "Matt Dilworth, REALTOR\u00ae";
 const PHONE     = "(919) 721-1111";
 const PHONE_TEL = "tel:+19197211111";
 const EMAIL     = "matt@mdilworth.com";
 const ADDRESS   = "304 N Horner Blvd, Sanford, NC 27330";
-const LOGO_SRC  = "/assets/310098317_547887383808324_4144042598416165954_n.png";
+const LOGO_SRC  = "/assets/logo.png";
 const SOCIAL = {
   facebook:  "https://facebook.com/MattDilworthRealtor",
   x:         "https://twitter.com/RealtorMattD",
@@ -59,8 +60,8 @@ function renderNav(el) {
   el.innerHTML = `
     <div class="container">
       <a class="navbar-brand" href="/">
-        <img src="${LOGO_SRC}" class="brand-logo" alt="${SITE_NAME} logo">
-        <span class="brand-text">Matt Dilworth<br><small>REALTOR&reg;</small></span>
+        <img src="${LOGO_SRC}" class="brand-logo" alt="${FIRM_NAME} logo">
+        <span class="brand-text">Matt Dilworth<br><small>REALTOR&reg; &middot; ${FIRM_NAME}</small></span>
       </a>
       <a href="/contact.html" class="btn btn-primary d-none d-lg-inline-block ms-auto me-3">GET IN TOUCH</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
@@ -114,13 +115,32 @@ function renderFooter(el) {
             </div>
           </div>
         </div>
+
+        <div class="footer-compliance">
+          <div class="d-flex flex-column flex-sm-row align-items-start gap-3">
+            <img src="/assets/equal-housing.svg" alt="Equal Housing Opportunity" class="eho-logo flex-shrink-0">
+            <p class="mb-0">
+              <strong>${FIRM_NAME}</strong> &mdash; Matt Dilworth, REALTOR&reg; is a licensed real estate
+              broker in North Carolina.
+              REALTOR&reg; is a registered collective membership mark identifying real estate professionals
+              who are members of the National Association of REALTORS&reg; and subscribe to its strict
+              Code of Ethics.
+              Equal Housing Opportunity &mdash; We are pledged to the letter and spirit of U.S. policy
+              for the achievement of equal housing opportunity throughout the Nation. We encourage and
+              support an affirmative advertising and marketing program in which there are no barriers
+              to obtaining housing because of race, color, religion, sex, handicap, familial status,
+              or national origin.
+            </p>
+          </div>
+        </div>
+
         <div class="footer-bottom d-flex flex-column flex-md-row justify-content-between gap-2">
           <p class="mb-0">
             I am committed to maintaining an accessible website. If you have difficulty accessing
             content or have questions about accessibility, please
             <a href="/contact.html">contact me</a>.
           </p>
-          <p class="mb-0 text-nowrap">&copy; <span id="footer-year"></span> Matt Dilworth. All rights reserved.</p>
+          <p class="mb-0 text-nowrap">&copy; <span id="footer-year"></span> ${FIRM_NAME}. All rights reserved.</p>
         </div>
       </div>
     </footer>`;
