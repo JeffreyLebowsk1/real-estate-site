@@ -86,12 +86,18 @@ fi
 
 # ─── 2. Deploy repo files ────────────────────────────────────────────────────
 info "Deploying site files to $INSTALL_DIR…"
+DEPLOY_USER="${SUDO_USER:-root}"
 mkdir -p "$INSTALL_DIR"
-# Sync everything except .git and node_modules
-rsync -a --exclude='.git' --exclude='node_modules' "$REPO_DIR/" "$INSTALL_DIR/"
+# Sync everything except node_modules; keep .git so `git pull` works later
+rsync -a --exclude='node_modules' "$REPO_DIR/" "$INSTALL_DIR/"
 
-# www-data owns the site files; the API backend writes leads.db there
-chown -R www-data:www-data "$INSTALL_DIR"
+# Deploy user owns the tree so they can cd in and run `git pull`.
+# www-data is the group so services (Caddy, Gunicorn) can read everything.
+chown -R "$DEPLOY_USER":www-data "$INSTALL_DIR"
+# Directories: owner=rwx, group=rx (traverse), others=none
+find "$INSTALL_DIR" -type d -exec chmod 750 {} \;
+# Files: owner=rw, group=r, others=none
+find "$INSTALL_DIR" -type f -exec chmod 640 {} \;
 
 # ─── 3. Python virtual-env + backend dependencies ───────────────────────────
 VENV_DIR="$INSTALL_DIR/backend/venv"
