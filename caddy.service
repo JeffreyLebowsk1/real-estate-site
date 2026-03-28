@@ -1,0 +1,26 @@
+# systemd unit file for Caddy serving homes.mdilworth.com
+# Install:
+#   sudo cp caddy.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now caddy
+#
+# Logs:
+#   journalctl -u caddy -f
+
+[Unit]
+Description=Caddy HTTP server (homes.mdilworth.com)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/caddy run --config /opt/real-estate-site/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /opt/real-estate-site/Caddyfile
+TimeoutStopSec=5s
+Restart=always
+RestartSec=5
+# Caddy needs to read/write its own data directory
+ReadWritePaths=/var/lib/caddy /var/log/caddy
+
+[Install]
+WantedBy=multi-user.target

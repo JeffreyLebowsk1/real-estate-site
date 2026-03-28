@@ -1,0 +1,20 @@
+# cloudflared tunnel configuration — cccc-notes
+#
+# Prerequisites (run once on the server before starting the service):
+#   cloudflared tunnel login
+#   cloudflared tunnel create cccc-notes        # skip if the tunnel already exists
+#
+# The credentials file is written to ~/.cloudflared/<TUNNEL-UUID>.json when the
+# tunnel is created.  Copy it to /etc/cloudflared/ and update the path below.
+#
+# DNS (set in the Cloudflare dashboard):
+#   homes.mdilworth.com  CNAME  <TUNNEL-UUID>.cfargotunnel.com   [proxied / orange cloud ✓]
+
+tunnel: cccc-notes
+credentials-file: /etc/cloudflared/cccc-notes.json
+
+ingress:
+  - hostname: homes.mdilworth.com
+    service: http://localhost:8080
+  # Catch-all — cloudflared requires this last rule
+  - service: http_status:404
