@@ -36,6 +36,23 @@ sudo bash setup-jetson.sh
 sudo systemctl restart cloudflared mdilworth-api caddy
 ```
 
+### Continuous deployment (GitHub Actions)
+
+Every push to `main` automatically deploys to the Jetson via the
+`.github/workflows/deploy.yml` workflow.  Add the following secrets to the
+repository (**Settings → Secrets and variables → Actions**):
+
+| Secret | Description |
+|---|---|
+| `JETSON_HOST` | Hostname or IP address of the Jetson Orin Nano |
+| `JETSON_USER` | SSH username on the Jetson (e.g. `jetson`) |
+| `JETSON_SSH_KEY` | Private SSH key whose public half is in `~/.ssh/authorized_keys` on the Jetson |
+| `JETSON_PORT` | *(optional)* SSH port — defaults to `22` |
+
+The workflow pulls the latest code into `~/real-estate-site` on the Jetson and
+then runs `backend/deploy.sh` to sync files to `/opt/real-estate-site` and
+restart the services.
+
 ### Key files
 
 | File | Purpose |
@@ -45,4 +62,5 @@ sudo systemctl restart cloudflared mdilworth-api caddy
 | `caddy.service` | systemd unit for Caddy |
 | `backend/mdilworth-api.service` | systemd unit for Flask/Gunicorn API |
 | `setup-jetson.sh` | One-shot bootstrap script for Jetson Orin Nano 8G |
+| `.github/workflows/deploy.yml` | GitHub Actions workflow — auto-deploys to Jetson on push to `main` |
 

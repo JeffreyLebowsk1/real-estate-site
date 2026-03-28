@@ -1,0 +1,40 @@
+name: Deploy to Jetson
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: SSH deploy to Jetson Orin Nano
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.JETSON_HOST }}
+          username: ${{ secrets.JETSON_USER }}
+          key: ${{ secrets.JETSON_SSH_KEY }}
+          port: ${{ secrets.JETSON_PORT || 22 }}
+          script: |
+            set -e
+
+            REPO="$HOME/real-estate-site"
+            if [ ! -d "$REPO" ]; then
+              echo "ERROR: $REPO not found. Clone the repo to $REPO first." >&2
+              exit 1
+            fi
+
+            cd "$REPO"
+
+            echo "==> Pulling latest code from main…"
+            git pull origin main || {
+              echo "ERROR: git pull failed (merge conflict, network issue, or auth error)." >&2
+              exit 1
+            }
+
+            echo "==> Running deploy script…"
+            bash backend/deploy.sh
