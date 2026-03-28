@@ -55,13 +55,13 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_HOST     = os.getenv("SMTP_HOST") or "smtp.gmail.com"
+SMTP_PORT     = int(os.getenv("SMTP_PORT") or "587")
 SMTP_USER     = os.getenv("SMTP_USER", "")
 SMTP_PASS     = os.getenv("SMTP_PASS", "")
-NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL", "matt@mdilworth.com")
-SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD", "5"))
-PORT          = int(os.getenv("PORT", "5000"))
+NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL") or "matt@mdilworth.com"
+SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD") or "5")
+PORT          = int(os.getenv("PORT") or "5000")
 
 # ---------------------------------------------------------------------------
 # Models
