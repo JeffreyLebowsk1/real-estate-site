@@ -76,7 +76,7 @@ img { max-width: 100%; height: auto; }
   gap: 0.6rem;
 }
 .navbar-brand .brand-logo {
-  height: 48px;
+  height: 52px;
   width: auto;
   display: block;
 }
@@ -396,9 +396,28 @@ section:nth-of-type(even) {
 }
 .site-footer a { color: #E5E7EB; text-decoration: none; }
 .site-footer a:hover { color: #fff; text-decoration: underline; }
-.footer-bottom {
+
+/* Footer compliance row */
+.footer-compliance {
   border-top: 1px solid rgba(255,255,255,.1);
   margin-top: 2rem;
+  padding-top: 1.5rem;
+  font-size: 0.78rem;
+  color: #6B7280;
+  line-height: 1.6;
+}
+.footer-compliance strong { color: #9CA3AF; }
+
+.eho-logo {
+  width: 44px;
+  height: 44px;
+  color: #6B7280;
+  opacity: 0.85;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,.1);
+  margin-top: 1.5rem;
   padding-top: 1.25rem;
   font-size: 0.8rem;
   color: #6B7280;
