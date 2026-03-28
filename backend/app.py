@@ -1,123 +1,186 @@
-"""Flask API backend for mdilworth.com contact forms.
+"""Flask API backend for mdilworth.com.
 
-Endpoints:
-  POST /api/lead    - Home page consultation request
-  POST /api/contact - Contact page / video page messages
+Public endpoints:
+  POST /api/lead    - Homepage consultation request
+  POST /api/contact - Contact / video page messages
+  GET  /api/health  - Health check
 
-Each submission is:
-  1. Saved to a local SQLite database (leads.db)
-  2. Emailed to the site owner via SMTP
-
-Run:
-  pip install -r requirements.txt
-  cp .env.example .env   # then edit with real values
-  python app.py
+Admin endpoints (all require login):
+  GET/POST /admin/login
+  GET      /admin/logout
+  GET      /admin              - Dashboard
+  GET      /admin/leads        - Lead table (filter/search)
+  GET      /admin/leads/<id>   - Lead detail with thread + notes
+  POST     /admin/leads/<id>/status  - Update status
+  POST     /admin/leads/<id>/notes   - Add note
+  POST     /admin/leads/<id>/reply   - Email reply (logs outbound message)
+  GET      /admin/export.csv   - CSV export of non-spam leads
 """
 
 import os
-import sqlite3
 import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
 
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ---------------------------------------------------------------------------
+# App + extensions
+# ---------------------------------------------------------------------------
 app = Flask(__name__)
 
-# Allow requests from the Cloudflare Pages site and the Caddy-served subdomain
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "DATABASE_URL", "postgresql://mdilworth:changeme@localhost/mdilworth"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
+
+db = SQLAlchemy(app)
+
 CORS(app, origins=[
     "https://mdilworth.com",
     "https://www.mdilworth.com",
     "https://homes.mdilworth.com",
-    "http://localhost:8080",  # local dev
+    "http://localhost:8081",
 ])
-
-# ---------------------------------------------------------------------------
-# Config from environment
-# ---------------------------------------------------------------------------
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
-NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", "homes@mdilworth.com")
-DB_PATH = os.getenv("DB_PATH", "leads.db")
-PORT = int(os.getenv("PORT", "5000"))
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Database helpers
+# Config
 # ---------------------------------------------------------------------------
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
+SMTP_HOST     = os.getenv("SMTP_HOST") or "smtp.gmail.com"
+SMTP_PORT     = int(os.getenv("SMTP_PORT") or "587")
+SMTP_USER     = os.getenv("SMTP_USER", "")
+SMTP_PASS     = os.getenv("SMTP_PASS", "")
+NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL") or "matt@mdilworth.com"
+SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD") or "5")
+PORT          = int(os.getenv("PORT") or "5000")
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
+class Lead(db.Model):
+    __tablename__ = "leads"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    form_type     = db.Column(db.Text, nullable=False)
+    name          = db.Column(db.Text)
+    email         = db.Column(db.Text)
+    phone         = db.Column(db.Text)
+    interest      = db.Column(db.Text)
+    location      = db.Column(db.Text)
+    property_type = db.Column(db.Text)
+    price_range   = db.Column(db.Text)
+    message       = db.Column(db.Text)
+    source        = db.Column(db.Text)
+    status        = db.Column(db.Text, nullable=False, default="new")
+    spam_score    = db.Column(db.Float, nullable=False, default=0.0)
+    created_at    = db.Column(db.DateTime(timezone=True), nullable=False,
+                              default=lambda: datetime.now(timezone.utc))
+
+    notes    = db.relationship("Note",    back_populates="lead",
+                               cascade="all, delete-orphan", order_by="Note.created_at")
+    messages = db.relationship("Message", back_populates="lead",
+                               cascade="all, delete-orphan", order_by="Message.sent_at")
 
 
-def init_db():
-    conn = get_db()
-    conn.executescript("""
-    CREATE TABLE IF NOT EXISTS leads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        form_type TEXT NOT NULL,
-        name TEXT,
-        email TEXT,
-        phone TEXT,
-        interest TEXT,
-        location TEXT,
-        property_type TEXT,
-        price_range TEXT,
-        message TEXT,
-        source TEXT,
-        created_at TEXT NOT NULL
-    );
-    """)
-    conn.close()
-    log.info("Database initialised at %s", DB_PATH)
+class Note(db.Model):
+    __tablename__ = "notes"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    lead_id    = db.Column(db.Integer, db.ForeignKey("leads.id"), nullable=False)
+    body       = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(timezone.utc))
+
+    lead = db.relationship("Lead", back_populates="notes")
 
 
-def save_lead(form_type: str, data: dict):
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO leads
-           (form_type, name, email, phone, interest, location,
-            property_type, price_range, message, source, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            form_type,
-            data.get("name"),
-            data.get("email"),
-            data.get("phone"),
-            data.get("interest"),
-            data.get("location"),
-            data.get("propertyType"),
-            data.get("priceRange"),
-            data.get("message"),
-            data.get("source"),
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
-    conn.commit()
-    conn.close()
+class Message(db.Model):
+    __tablename__ = "messages"
+
+    id        = db.Column(db.Integer, primary_key=True)
+    lead_id   = db.Column(db.Integer, db.ForeignKey("leads.id"), nullable=False)
+    direction = db.Column(db.Text, nullable=False)  # "inbound" | "outbound"
+    subject   = db.Column(db.Text)
+    body      = db.Column(db.Text)
+    sent_at   = db.Column(db.DateTime(timezone=True), nullable=False,
+                          default=lambda: datetime.now(timezone.utc))
+
+    lead = db.relationship("Lead", back_populates="messages")
+
+
+# ---------------------------------------------------------------------------
+# Spam scorer
+# ---------------------------------------------------------------------------
+_SPAM_KEYWORDS = [
+    # Marketing / SEO pitches
+    ("seo", 2), ("search engine optimiz", 2), ("rank higher", 3),
+    ("rank on google", 3), ("digital marketing", 2), ("digital agency", 2),
+    ("marketing agency", 2), ("marketing services", 2), ("grow your business", 2),
+    ("increase your traffic", 2), ("link building", 3), ("backlinks", 2),
+    ("leads for you", 3), ("generate leads", 2), ("i can help you get more", 2),
+    ("social media management", 2), ("pay per click", 2), ("google ads", 1),
+    # Investor / wholesale pitches
+    ("wholesale", 3), ("wholesaler", 3), ("off-market", 2), ("cash offer", 2),
+    ("cash buyer", 2), ("joint venture", 3), ("partner with", 2),
+    ("referral fee", 3), ("bird dog", 3), ("flip", 1), ("fix and flip", 3),
+    ("investment property", 2), ("passive income", 2),
+    # Generic spam signals
+    ("dear sir", 2), ("dear madam", 2), ("greetings of the day", 3),
+    ("i am writing to", 1), ("kindly revert", 3), ("revert back", 2),
+    ("please find attached", 2),
+]
+
+_FREEMAIL_DOMAINS = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+                     "icloud.com", "protonmail.com", "aol.com"}
+
+def compute_spam_score(data: dict) -> float:
+    score = 0.0
+    text = " ".join(filter(None, [
+        data.get("name", ""),
+        data.get("email", ""),
+        data.get("message", ""),
+        data.get("interest", ""),
+        data.get("location", ""),
+    ])).lower()
+
+    for keyword, weight in _SPAM_KEYWORDS:
+        if keyword in text:
+            score += weight
+
+    # No phone number on a lead form is a mild signal
+    if not data.get("phone"):
+        score += 0.5
+
+    # Very short messages on contact form
+    msg = data.get("message", "")
+    if msg and len(msg.strip()) < 20:
+        score += 1.0
+
+    # Cap at 10
+    return min(score, 10.0)
 
 
 # ---------------------------------------------------------------------------
 # Email helper
 # ---------------------------------------------------------------------------
-def send_notification(subject: str, body: str):
+def send_email(to: str, subject: str, body: str):
     if not SMTP_USER or not SMTP_PASS:
-        log.warning("SMTP not configured - skipping email")
+        log.warning("SMTP not configured — skipping email")
         return
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     msg = MIMEMultipart()
     msg["From"] = SMTP_USER
-    msg["To"] = NOTIFY_EMAIL
+    msg["To"] = to
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
     try:
@@ -125,60 +188,105 @@ def send_notification(subject: str, body: str):
             server.starttls()
             server.login(SMTP_USER, SMTP_PASS)
             server.send_message(msg)
-        log.info("Notification sent: %s", subject)
+        log.info("Email sent to %s: %s", to, subject)
     except Exception as exc:
         log.error("Failed to send email: %s", exc)
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Shared lead-saving helper
 # ---------------------------------------------------------------------------
+def save_lead(form_type: str, data: dict) -> Lead:
+    score = compute_spam_score(data)
+    status = "spam" if score >= SPAM_THRESHOLD else "new"
+
+    lead = Lead(
+        form_type     = form_type,
+        name          = data.get("name"),
+        email         = data.get("email"),
+        phone         = data.get("phone"),
+        interest      = data.get("interest"),
+        location      = data.get("location"),
+        property_type = data.get("propertyType"),
+        price_range   = data.get("priceRange"),
+        message       = data.get("message"),
+        source        = data.get("source"),
+        status        = status,
+        spam_score    = score,
+    )
+    db.session.add(lead)
+    db.session.flush()   # get lead.id before commit
+
+    # Log inbound message in thread
+    db.session.add(Message(
+        lead_id   = lead.id,
+        direction = "inbound",
+        subject   = f"[{form_type}] {data.get('name', 'Unknown')}",
+        body      = data.get("message", ""),
+    ))
+
+    db.session.commit()
+    log.info("Lead saved id=%s status=%s spam_score=%.1f", lead.id, status, score)
+    return lead
+
+
+# ---------------------------------------------------------------------------
+# Public API routes
+# ---------------------------------------------------------------------------
+from flask import request, jsonify
+
 @app.route("/api/lead", methods=["POST"])
-def lead():
+def api_lead():
     data = request.get_json(force=True)
     required = ["name", "email", "interest", "location"]
     missing = [f for f in required if not data.get(f)]
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    save_lead("lead", data)
+    lead = save_lead("lead", data)
 
-    body = (
-        f"New lead from mdilworth.com\n"
-        f"{'='*40}\n"
-        f"Name:          {data.get('name')}\n"
-        f"Email:         {data.get('email')}\n"
-        f"Phone:         {data.get('phone', 'N/A')}\n"
-        f"Interest:      {data.get('interest')}\n"
-        f"Location:      {data.get('location')}\n"
-        f"Property type: {data.get('propertyType', 'N/A')}\n"
-        f"Price range:   {data.get('priceRange', 'N/A')}\n"
-        f"Message:       {data.get('message', 'N/A')}\n"
-    )
-    send_notification(f"New Lead: {data['name']}", body)
+    if lead.status != "spam":
+        body = (
+            f"New lead from mdilworth.com\n"
+            f"{'='*40}\n"
+            f"Name:          {lead.name}\n"
+            f"Email:         {lead.email}\n"
+            f"Phone:         {lead.phone or 'N/A'}\n"
+            f"Interest:      {lead.interest}\n"
+            f"Location:      {lead.location}\n"
+            f"Property type: {lead.property_type or 'N/A'}\n"
+            f"Price range:   {lead.price_range or 'N/A'}\n"
+            f"Message:       {lead.message or 'N/A'}\n"
+            f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+        )
+        send_email(NOTIFY_EMAIL, f"New Lead: {lead.name}", body)
+
     return jsonify({"ok": True}), 200
 
 
 @app.route("/api/contact", methods=["POST"])
-def contact():
+def api_contact():
     data = request.get_json(force=True)
     required = ["name", "email"]
     missing = [f for f in required if not data.get(f)]
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    save_lead("contact", data)
+    lead = save_lead("contact", data)
 
-    body = (
-        f"New contact from mdilworth.com\n"
-        f"{'='*40}\n"
-        f"Name:    {data.get('name')}\n"
-        f"Email:   {data.get('email')}\n"
-        f"Phone:   {data.get('phone', 'N/A')}\n"
-        f"Source:  {data.get('source', 'contact-page')}\n"
-        f"Message: {data.get('message', 'N/A')}\n"
-    )
-    send_notification(f"Contact: {data['name']}", body)
+    if lead.status != "spam":
+        body = (
+            f"New contact from mdilworth.com\n"
+            f"{'='*40}\n"
+            f"Name:    {lead.name}\n"
+            f"Email:   {lead.email}\n"
+            f"Phone:   {lead.phone or 'N/A'}\n"
+            f"Source:  {lead.source or 'contact-page'}\n"
+            f"Message: {lead.message or 'N/A'}\n"
+            f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+        )
+        send_email(NOTIFY_EMAIL, f"Contact: {lead.name}", body)
+
     return jsonify({"ok": True}), 200
 
 
@@ -188,6 +296,14 @@ def health():
 
 
 # ---------------------------------------------------------------------------
+# Admin blueprint
+# ---------------------------------------------------------------------------
+from admin import admin_bp
+app.register_blueprint(admin_bp)
+
+
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    init_db()
+    with app.app_context():
+        db.create_all()
     app.run(host="0.0.0.0", port=PORT)

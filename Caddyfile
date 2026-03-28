@@ -3,20 +3,21 @@
 # Cloudflare's orange-cloud proxy (via the cccc-notes tunnel) terminates TLS.
 # Caddy therefore only needs plain HTTP; auto_https is disabled.
 #
-# Listens on :8080 so Caddy runs without root / CAP_NET_BIND_SERVICE.
-# The cloudflared tunnel config points to http://localhost:8080.
+# Listens on :8081 so Caddy runs without root / CAP_NET_BIND_SERVICE.
+# The cloudflared tunnel config points to http://localhost:8081.
 
 {
     auto_https off
 }
 
-:8080 {
+:8081 {
+    # Proxy API and admin calls to the Flask/Gunicorn backend
+    reverse_proxy /api/* 127.0.0.1:5000
+    reverse_proxy /admin* 127.0.0.1:5000
+
     # Serve static front-end files
     root * /opt/real-estate-site
     file_server
-
-    # Proxy API calls to the Flask/Gunicorn backend
-    reverse_proxy /api/* 127.0.0.1:5000
 
     encode gzip
 
