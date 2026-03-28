@@ -137,4 +137,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (nv) renderNav(nv);
   if (ct) renderCtaBand(ct);
   if (ft) renderFooter(ft);
+  document.body.classList.add("page-ready");
 });
+
+// Fallback: ensure the page becomes visible even if an error occurs above
+setTimeout(() => document.body.classList.add("page-ready"), 1000);
