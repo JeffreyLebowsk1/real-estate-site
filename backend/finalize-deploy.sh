@@ -6,7 +6,6 @@ DEPLOY_DIR="/opt/real-estate-site"
 VENV="$DEPLOY_DIR/backend/venv"
 PYTHON="$VENV/bin/python3"
 PIP="$VENV/bin/pip"
-REPO_DIR="$HOME/real-estate-site"
 
 echo "==> Set postgres password"
 DB_PASS=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
@@ -14,15 +13,9 @@ sudo -u postgres psql -c "ALTER USER mdilworth PASSWORD '$DB_PASS';" > /dev/null
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE mdilworth TO mdilworth;" > /dev/null
 echo "    DB_PASS generated"
 
-echo "==> Sync repo to /opt"
-sudo rsync -a --delete \
-  --exclude 'backend/venv' \
-  --exclude 'backend/__pycache__' \
-  --exclude 'backend/*.pyc' \
-  --exclude 'backend/leads.db' \
-  "$REPO_DIR/" "$DEPLOY_DIR/"
-sudo chown -R www-data:www-data "$DEPLOY_DIR"
-echo "    Sync done"
+echo "==> Pull latest code into $DEPLOY_DIR"
+git -C "$DEPLOY_DIR" pull --ff-only
+echo "    Pull done"
 
 echo "==> Install Python packages"
 sudo -u www-data "$PIP" install -q --upgrade -r "$DEPLOY_DIR/backend/requirements.txt"
@@ -68,7 +61,7 @@ with app.app_context():
 \""
 
 echo "==> Migrate old SQLite data"
-OLD_DB="$REPO_DIR/backend/leads.db"
+OLD_DB="$HOME/real-estate-site/backend/leads.db"
 if [ -f "$OLD_DB" ]; then
   sudo cp "$OLD_DB" "$DEPLOY_DIR/backend/leads.db"
   sudo chown www-data:www-data "$DEPLOY_DIR/backend/leads.db"

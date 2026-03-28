@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # deploy.sh — run on Jetson to install PostgreSQL, set up DB, install packages,
 # generate a password hash, update .env, and restart services.
-# Usage: bash ~/real-estate-site/backend/deploy.sh
+# Usage: bash /opt/real-estate-site/backend/deploy.sh
 set -e
 
-REPO_DIR="$HOME/real-estate-site"
 DEPLOY_DIR="/opt/real-estate-site"
 VENV="$DEPLOY_DIR/backend/venv"
 PYTHON="$VENV/bin/python3"
@@ -31,14 +30,8 @@ fi
 sudo -u postgres psql -c "ALTER USER mdilworth PASSWORD '$DB_PASS';" > /dev/null
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE mdilworth TO mdilworth;" > /dev/null
 
-echo "==> 3. Sync repo → /opt"
-sudo rsync -a --delete \
-  --exclude 'backend/venv' \
-  --exclude 'backend/__pycache__' \
-  --exclude 'backend/*.pyc' \
-  --exclude 'backend/leads.db' \
-  "$REPO_DIR/" "$DEPLOY_DIR/"
-sudo chown -R www-data:www-data "$DEPLOY_DIR"
+echo "==> 3. Pull latest code into $DEPLOY_DIR"
+git -C "$DEPLOY_DIR" pull --ff-only
 
 echo "==> 4. Install Python packages"
 sudo -u www-data "$PIP" install -q --upgrade -r "$DEPLOY_DIR/backend/requirements.txt"
