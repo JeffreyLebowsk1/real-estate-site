@@ -7,7 +7,7 @@ const PHONE     = "(919) 721-1111";
 const PHONE_TEL = "tel:+19197211111";
 const EMAIL     = "matt@mdilworth.com";
 const ADDRESS   = "304 N Horner Blvd, Sanford, NC 27330";
-const LOGO_SRC  = "/assets/logo.png";
+const LOGO_SRC     = "/assets/SanfordRE-logo.webp";
 const SOCIAL = {
   facebook:  "https://facebook.com/MattDilworthRealtor",
   x:         "https://twitter.com/RealtorMattD",
@@ -97,7 +97,7 @@ function renderFooter(el) {
       <div class="container">
         <div class="row g-4">
           <div class="col-md-4">
-            <h5>Location</h5>
+            <img src="${LOGO_SRC}" alt="${FIRM_NAME} logo" class="footer-logo mb-3">
             <p class="mb-0">${ADDRESS}</p>
           </div>
           <div class="col-md-4">
