@@ -30,10 +30,11 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Allow requests from the Cloudflare Pages site
+# Allow requests from the Cloudflare Pages site and the Caddy-served subdomain
 CORS(app, origins=[
     "https://mdilworth.com",
     "https://www.mdilworth.com",
+    "https://homes.mdilworth.com",
     "http://localhost:8080",  # local dev
 ])
 
