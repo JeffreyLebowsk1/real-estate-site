@@ -4,7 +4,7 @@
 const SITE_NAME = "Matt Dilworth, REALTOR\u00ae";
 const PHONE     = "(919) 721-1111";
 const PHONE_TEL = "tel:+19197211111";
-const EMAIL     = "homes@mdilworth.com";
+const EMAIL     = "matt@mdilworth.com";
 const ADDRESS   = "304 N Horner Blvd, Sanford, NC 27330";
 const SOCIAL = {
   facebook:  "https://facebook.com/MattDilworthRealtor",
