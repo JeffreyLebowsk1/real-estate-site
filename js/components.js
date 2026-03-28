@@ -6,6 +6,7 @@ const PHONE     = "(919) 721-1111";
 const PHONE_TEL = "tel:+19197211111";
 const EMAIL     = "matt@mdilworth.com";
 const ADDRESS   = "304 N Horner Blvd, Sanford, NC 27330";
+const LOGO_SRC  = "/assets/310098317_547887383808324_4144042598416165954_n.png";
 const SOCIAL = {
   facebook:  "https://facebook.com/MattDilworthRealtor",
   x:         "https://twitter.com/RealtorMattD",
@@ -52,20 +53,29 @@ function renderNav(el) {
     `<li class="nav-item"><a class="nav-link ${n.href === cur ? 'active fw-semibold' : ''}" href="${n.href}">${n.label}</a></li>`
   ).join("");
 
+  // Apply navbar classes directly to the #site-nav element so the CSS
+  // selector #site-nav.navbar resolves correctly.
+  el.className = "navbar navbar-expand-lg sticky-top";
   el.innerHTML = `
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
-      <div class="container">
-        <a class="navbar-brand" href="/">${SITE_NAME}</a>
-        <a href="/contact.html" class="btn btn-primary d-none d-lg-inline-block ms-auto me-3">GET IN TOUCH</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNav">
-          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">${items}</ul>
-        </div>
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <img src="${LOGO_SRC}" class="brand-logo" alt="${SITE_NAME} logo">
+        <span class="brand-text">Matt Dilworth<br><small>REALTOR&reg;</small></span>
+      </a>
+      <a href="/contact.html" class="btn btn-primary d-none d-lg-inline-block ms-auto me-3">GET IN TOUCH</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+              aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">${items}</ul>
       </div>
-    </nav>`;
+    </div>`;
+
+  // Add scroll shadow
+  window.addEventListener("scroll", () => {
+    el.classList.toggle("scrolled", window.scrollY > 10);
+  }, { passive: true });
 }
 
 function renderCtaBand(el) {
@@ -74,7 +84,8 @@ function renderCtaBand(el) {
       <div class="container">
         <h2 class="h3 mb-2">Ready to buy or sell a property?</h2>
         <p class="mb-3">Call me today at <a href="${PHONE_TEL}" class="fw-bold">${PHONE}</a></p>
-        <a href="/contact.html" class="btn btn-light btn-lg">Get in touch</a>
+        <a href="/contact.html" class="btn btn-light btn-lg me-2">Get in touch</a>
+        <a href="${PHONE_TEL}" class="btn btn-outline-primary btn-lg" aria-label="Call Matt Dilworth at ${PHONE}">Call now</a>
       </div>
     </section>`;
 }
@@ -83,19 +94,19 @@ function renderFooter(el) {
   el.innerHTML = `
     <footer class="site-footer">
       <div class="container">
-        <div class="row g-4 mb-3">
+        <div class="row g-4">
           <div class="col-md-4">
-            <h5 class="text-white mb-2">Location</h5>
-            <p class="small mb-0">${ADDRESS}</p>
+            <h5>Location</h5>
+            <p class="mb-0">${ADDRESS}</p>
           </div>
           <div class="col-md-4">
-            <h5 class="text-white mb-2">Contact</h5>
-            <p class="small mb-1"><a href="${PHONE_TEL}">${PHONE}</a></p>
-            <p class="small mb-0"><a href="mailto:${EMAIL}">${EMAIL}</a></p>
+            <h5>Contact</h5>
+            <p class="mb-1"><a href="${PHONE_TEL}">${PHONE}</a></p>
+            <p class="mb-0"><a href="mailto:${EMAIL}">${EMAIL}</a></p>
           </div>
           <div class="col-md-4">
-            <h5 class="text-white mb-2">Connect</h5>
-            <div class="d-flex gap-3 mb-2">
+            <h5>Connect</h5>
+            <div class="d-flex gap-3">
               <a href="${SOCIAL.facebook}" target="_blank" rel="noopener">Facebook</a>
               <a href="${SOCIAL.x}" target="_blank" rel="noopener">X</a>
               <a href="${SOCIAL.instagram}" target="_blank" rel="noopener">Instagram</a>
@@ -103,18 +114,13 @@ function renderFooter(el) {
             </div>
           </div>
         </div>
-        <hr class="border-secondary">
-        <div class="row">
-          <div class="col-md-8">
-            <p class="small mb-0">
-              I am committed to maintaining an accessible website. If you have difficulty accessing
-              content or have questions about accessibility, please
-              <a href="/contact.html">contact me</a>.
-            </p>
-          </div>
-          <div class="col-md-4 text-md-end">
-            <p class="small mb-0">&copy; <span id="footer-year"></span> Matt Dilworth. All rights reserved.</p>
-          </div>
+        <div class="footer-bottom d-flex flex-column flex-md-row justify-content-between gap-2">
+          <p class="mb-0">
+            I am committed to maintaining an accessible website. If you have difficulty accessing
+            content or have questions about accessibility, please
+            <a href="/contact.html">contact me</a>.
+          </p>
+          <p class="mb-0 text-nowrap">&copy; <span id="footer-year"></span> Matt Dilworth. All rights reserved.</p>
         </div>
       </div>
     </footer>`;
