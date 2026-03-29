@@ -11,9 +11,10 @@
 }
 
 :8081 {
-    # Proxy API and admin calls to the Flask/Gunicorn backend
+    # Proxy API, admin, and webhook calls to the Flask/Gunicorn backend
     reverse_proxy /api/* 127.0.0.1:5000
     reverse_proxy /admin* 127.0.0.1:5000
+    reverse_proxy /webhook/* 127.0.0.1:5000
 
     # Serve static front-end files
     root * /opt/real-estate-site
