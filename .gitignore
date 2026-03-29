@@ -2,3 +2,9 @@ node_modules/
 package.json
 package-lock.json
 assets/vendor/
+__pycache__/
+*.pyc
+*.pyo
+backend/instance/
+backend/*.db
+backend/**/__pycache__/
