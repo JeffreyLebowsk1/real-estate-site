@@ -17,6 +17,7 @@ import io
 import os
 from datetime import datetime, timezone, timedelta
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
@@ -26,8 +27,6 @@ from werkzeug.security import check_password_hash
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin",
                      template_folder="templates")
-
-ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "")
 
 # Status badge colours (Bootstrap)
 STATUS_COLORS = {
@@ -60,11 +59,18 @@ def login():
     error = None
     if request.method == "POST":
         password = request.form.get("password", "")
-        if ADMIN_PASSWORD_HASH and check_password_hash(ADMIN_PASSWORD_HASH, password):
+        password_hash = os.getenv("ADMIN_PASSWORD_HASH", "")
+        if password_hash and check_password_hash(password_hash, password):
             session["admin_logged_in"] = True
             session.permanent = True
-            next_url = request.args.get("next") or url_for("admin.dashboard")
-            return redirect(next_url)
+            next_url = request.args.get("next", "")
+            # Only allow same-site relative redirects to prevent open-redirect attacks.
+            # Reject any URL with a scheme, netloc, or backslash (which some browsers
+            # treat as a path separator and could be used to bypass the netloc check).
+            parsed = urlparse(next_url)
+            if next_url and not parsed.scheme and not parsed.netloc and "\\" not in next_url:
+                return redirect(next_url)
+            return redirect(url_for("admin.dashboard"))
         error = "Incorrect password."
     return render_template("admin/login.html", error=error)
 
