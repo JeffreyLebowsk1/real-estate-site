@@ -120,6 +120,19 @@ if [[ ! -f "$ENV_FILE" ]]; then
     chmod 600 "$ENV_FILE"
 fi
 
+# ─── 4a. Webhook deploy script ───────────────────────────────────────────────
+# Make webhook-deploy.sh executable and grant www-data (gunicorn) permission
+# to invoke it as root so it can run git pull + systemctl restart/reload.
+chmod +x "$INSTALL_DIR/backend/webhook-deploy.sh"
+
+SUDOERS_FILE="/etc/sudoers.d/mdilworth-webhook"
+if [[ ! -f "$SUDOERS_FILE" ]]; then
+    info "Installing sudoers rule for webhook-deploy.sh…"
+    echo "www-data ALL=(ALL) NOPASSWD: $INSTALL_DIR/backend/webhook-deploy.sh" \
+        > "$SUDOERS_FILE"
+    chmod 440 "$SUDOERS_FILE"
+fi
+
 # ─── 5. cloudflared credentials & config ─────────────────────────────────────
 CF_CONFIG_DIR="/etc/cloudflared"
 mkdir -p "$CF_CONFIG_DIR"
@@ -217,4 +230,7 @@ echo "    2. Place the cccc-notes tunnel credentials at $CF_CREDS"
 echo "    3. In Cloudflare DNS, add:"
 echo "         homes.mdilworth.com  CNAME  <tunnel-uuid>.cfargotunnel.com  [proxied ✓]"
 echo "    4. sudo systemctl restart cloudflared mdilworth-api caddy"
+echo "    5. Add GitHub repo secrets (Settings → Secrets and variables → Actions):"
+echo "         JETSON_WEBHOOK_SECRET  — run: sudo grep '^GITHUB_WEBHOOK_SECRET=' \"$ENV_FILE\""
+echo "         JETSON_WEBHOOK_URL     — https://homes.mdilworth.com/webhook/deploy"
 echo ""

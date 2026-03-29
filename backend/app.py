@@ -18,8 +18,11 @@ Admin endpoints (all require login):
 """
 
 import os
+import hmac as _hmac
+import hashlib
 import smtplib
 import logging
+import subprocess
 from datetime import datetime, timezone
 
 from flask import Flask
@@ -63,6 +66,7 @@ SMTP_PASS     = os.getenv("SMTP_PASS", "")
 NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL") or "matt@mdilworth.com"
 SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD") or "5")
 PORT          = int(os.getenv("PORT") or "5000")
+GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
 
 # ---------------------------------------------------------------------------
 # Models
@@ -327,6 +331,43 @@ def api_contact():
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+
+# ---------------------------------------------------------------------------
+# Deploy webhook — called by GitHub Actions on every push to main
+# ---------------------------------------------------------------------------
+def _verify_github_signature(payload: bytes, sig_header: str) -> bool:
+    """Return True if sig_header is a valid HMAC-SHA256 signature of payload."""
+    if not GITHUB_WEBHOOK_SECRET:
+        return False
+    expected = "sha256=" + _hmac.new(
+        GITHUB_WEBHOOK_SECRET.encode(), payload, hashlib.sha256
+    ).hexdigest()
+    return _hmac.compare_digest(expected, sig_header)
+
+
+@app.route("/webhook/deploy", methods=["POST"])
+def webhook_deploy():
+    sig = request.headers.get("X-Hub-Signature-256", "")
+    body = request.get_data()
+    if not _verify_github_signature(body, sig):
+        log.warning("Deploy webhook: invalid or missing signature from %s",
+                    request.remote_addr)
+        return jsonify({"error": "forbidden"}), 403
+
+    # Run the deploy script in the background so a potential service restart
+    # (mdilworth-api) does not kill this HTTP response mid-flight.
+    deploy_script = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "webhook-deploy.sh"
+    )
+    subprocess.Popen(
+        ["sudo", deploy_script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+    )
+    log.info("Deploy webhook accepted — webhook-deploy.sh started in background")
+    return jsonify({"ok": True}), 202
 
 
 # ---------------------------------------------------------------------------
