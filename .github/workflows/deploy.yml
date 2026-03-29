@@ -49,7 +49,7 @@ jobs:
         run: |
           # Guard: skip gracefully if the required secrets are not configured
           if [[ -z "$WEBHOOK_SECRET" || -z "$WEBHOOK_URL" ]]; then
-            echo "::warning::JETSON_WEBHOOK_SECRET or JETSON_WEBHOOK_URL is not configured — skipping deploy webhook."
+            echo "::notice::JETSON_WEBHOOK_SECRET or JETSON_WEBHOOK_URL is not configured — skipping deploy webhook."
             exit 0
           fi
           # Build a minimal push-event payload
