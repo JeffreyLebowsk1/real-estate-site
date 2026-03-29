@@ -63,6 +63,11 @@ SMTP_PORT=$(grep '^SMTP_PORT=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= 
 SMTP_USER=$(grep '^SMTP_USER=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= -f2- || echo "")
 SMTP_PASS=$(grep '^SMTP_PASS=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= -f2- || echo "")
 NOTIFY_EMAIL=$(grep '^NOTIFY_EMAIL=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= -f2- || echo "matt@mdilworth.com")
+WEBHOOK_SECRET=$(grep '^GITHUB_WEBHOOK_SECRET=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= -f2- || echo "")
+if [ -z "$WEBHOOK_SECRET" ]; then
+  WEBHOOK_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+  echo "  Generated GITHUB_WEBHOOK_SECRET — add to GitHub repo secrets as JETSON_WEBHOOK_SECRET."
+fi
 
 sudo tee "$DEPLOY_DIR/backend/.env" > /dev/null <<ENVEOF
 SMTP_HOST=$SMTP_HOST
@@ -75,6 +80,7 @@ SECRET_KEY=$APP_SECRET
 ADMIN_PASSWORD_HASH=$ADMIN_HASH
 SPAM_THRESHOLD=5
 PORT=5000
+GITHUB_WEBHOOK_SECRET=$WEBHOOK_SECRET
 ENVEOF
 sudo chown www-data:www-data "$DEPLOY_DIR/backend/.env"
 sudo chmod 600 "$DEPLOY_DIR/backend/.env"

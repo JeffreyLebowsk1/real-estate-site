@@ -13,6 +13,7 @@ SMTP_USER=$(sudo grep '^SMTP_USER=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut
 SMTP_PASS=$(sudo grep '^SMTP_PASS=' "$DEPLOY_DIR/backend/.env" 2>/dev/null | cut -d= -f2- || echo "")
 
 APP_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+WEBHOOK_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
 
 # Write .env
 sudo tee "$DEPLOY_DIR/backend/.env" > /dev/null << 'ENVEOF'
@@ -26,14 +27,21 @@ SECRET_KEY=PLACEHOLDER_SECRET
 ADMIN_PASSWORD_HASH=
 SPAM_THRESHOLD=5
 PORT=5000
+GITHUB_WEBHOOK_SECRET=PLACEHOLDER_WEBHOOK_SECRET
 ENVEOF
 
-# Replace the placeholder secret with a real one
+# Replace the placeholder secrets with real ones
 sudo sed -i "s|PLACEHOLDER_SECRET|$APP_SECRET|" "$DEPLOY_DIR/backend/.env"
+sudo sed -i "s|PLACEHOLDER_WEBHOOK_SECRET|$WEBHOOK_SECRET|" "$DEPLOY_DIR/backend/.env"
 sudo chown www-data:www-data "$DEPLOY_DIR/backend/.env"
 sudo chmod 600 "$DEPLOY_DIR/backend/.env"
 echo ".env written"
 sudo cat "$DEPLOY_DIR/backend/.env" | grep -v PASS | grep -v SECRET
+echo ""
+echo "IMPORTANT — add the following to GitHub repo secrets"
+echo "  (Settings → Secrets and variables → Actions):"
+echo "  JETSON_WEBHOOK_SECRET = $WEBHOOK_SECRET"
+echo "  JETSON_WEBHOOK_URL    = https://homes.mdilworth.com/webhook/deploy"
 
 echo "Creating DB tables..."
 sudo -u www-data bash -c "cd '$DEPLOY_DIR/backend' && '$PYTHON' -c '
