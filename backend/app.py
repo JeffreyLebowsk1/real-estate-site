@@ -64,6 +64,11 @@ SMTP_PORT     = int(os.getenv("SMTP_PORT") or "587")
 SMTP_USER     = os.getenv("SMTP_USER", "")
 SMTP_PASS     = os.getenv("SMTP_PASS", "")
 NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL") or "matt@mdilworth.com"
+# FROM_EMAIL / FROM_NAME let you send notifications from a different address
+# (e.g. a verified Gmail alias) so Gmail doesn't treat the message as
+# self-sent and deduplicate it.  Defaults to SMTP_USER when not set.
+FROM_EMAIL    = os.getenv("FROM_EMAIL") or SMTP_USER
+FROM_NAME     = os.getenv("FROM_NAME", "")
 SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD") or "5")
 PORT          = int(os.getenv("PORT") or "5000")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
@@ -183,8 +188,9 @@ def send_email(to: str, subject: str, body: str, reply_to: str = None):
         return
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.utils import formataddr
     msg = MIMEMultipart()
-    msg["From"] = SMTP_USER
+    msg["From"] = formataddr((FROM_NAME.strip(), FROM_EMAIL)) if FROM_NAME.strip() else FROM_EMAIL
     msg["To"] = to
     msg["Subject"] = subject
     if reply_to:
