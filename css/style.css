@@ -83,7 +83,6 @@ img { max-width: 100%; height: auto; }
   height: 56px;
   width: auto;
   display: block;
-  filter: brightness(0) invert(1);
 }
 
 .nav-link {
@@ -449,7 +448,6 @@ section:nth-of-type(even) {
   height: 60px;
   width: auto;
   display: block;
-  filter: brightness(0) invert(1); /* invert to white for dark footer background */
   opacity: 0.9;
 }
 

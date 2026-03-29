@@ -238,6 +238,8 @@ from flask import request, jsonify
 @app.route("/api/lead", methods=["POST"])
 def api_lead():
     data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
     required = ["name", "email", "interest", "location"]
     missing = [f for f in required if not data.get(f)]
     if missing:
@@ -267,6 +269,8 @@ def api_lead():
 @app.route("/api/contact", methods=["POST"])
 def api_contact():
     data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
     required = ["name", "email"]
     missing = [f for f in required if not data.get(f)]
     if missing:

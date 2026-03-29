@@ -7,7 +7,8 @@ function showAlert(el, message, type) {
   el.textContent = message;
 }
 
-async function submitForm(url, payload, alertEl, btn, originalText) {
+async function submitForm(url, payload, alertEl, btn) {
+  const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = "Sending...";
   try {
@@ -50,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showAlert(alertEl, "Please fill in the required fields.", "danger");
         return;
       }
-      if (await submitForm(`${API_BASE}/api/lead`, payload, alertEl, btn, "Submit request")) {
+      if (await submitForm(`${API_BASE}/api/lead`, payload, alertEl, btn)) {
         leadForm.reset();
       }
     });
@@ -72,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showAlert(alertEl, "Please complete all required fields.", "danger");
         return;
       }
-      if (await submitForm(`${API_BASE}/api/contact`, payload, alertEl, btn, "Send message")) {
+      if (await submitForm(`${API_BASE}/api/contact`, payload, alertEl, btn)) {
         contactForm.reset();
       }
     });
@@ -94,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showAlert(alertEl, "Please enter your name and email.", "danger");
         return;
       }
-      if (await submitForm(`${API_BASE}/api/contact`, payload, alertEl, btn, "Submit")) {
+      if (await submitForm(`${API_BASE}/api/contact`, payload, alertEl, btn)) {
         videoForm.reset();
       }
     });
