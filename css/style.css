@@ -21,6 +21,14 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
   --shadow-md: 0 8px 30px rgba(0,0,0,.08);
   --shadow-lg: 0 20px 50px rgba(0,0,0,.10);
+
+  /* Override Bootstrap 5 CSS custom properties to keep our color palette */
+  --bs-primary: #1B3A5C;
+  --bs-primary-rgb: 27, 58, 92;
+  --bs-link-color: #1B3A5C;
+  --bs-link-color-rgb: 27, 58, 92;
+  --bs-link-hover-color: #122840;
+  --bs-link-hover-color-rgb: 18, 40, 64;
 }
 
 /* === Reset & Base === */
@@ -110,6 +118,15 @@ img { max-width: 100%; height: auto; }
 }
 
 .btn-primary {
+  /* Override Bootstrap 5's --bs-btn-* variables so all states use our navy */
+  --bs-btn-bg: var(--primary);
+  --bs-btn-border-color: var(--primary);
+  --bs-btn-hover-bg: var(--primary-dark);
+  --bs-btn-hover-border-color: var(--primary-dark);
+  --bs-btn-active-bg: var(--primary-dark);
+  --bs-btn-active-border-color: var(--primary-dark);
+  --bs-btn-disabled-bg: var(--primary);
+  --bs-btn-disabled-border-color: var(--primary);
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
