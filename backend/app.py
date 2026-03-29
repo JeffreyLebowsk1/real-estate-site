@@ -64,6 +64,11 @@ SMTP_PORT     = int(os.getenv("SMTP_PORT") or "587")
 SMTP_USER     = os.getenv("SMTP_USER", "")
 SMTP_PASS     = os.getenv("SMTP_PASS", "")
 NOTIFY_EMAIL  = os.getenv("NOTIFY_EMAIL") or "matt@mdilworth.com"
+# FROM_EMAIL / FROM_NAME let you send notifications from a different address
+# (e.g. a verified Gmail alias) so Gmail doesn't treat the message as
+# self-sent and deduplicate it.  Defaults to SMTP_USER when not set.
+FROM_EMAIL    = os.getenv("FROM_EMAIL") or SMTP_USER
+FROM_NAME     = os.getenv("FROM_NAME", "")
 SPAM_THRESHOLD = float(os.getenv("SPAM_THRESHOLD") or "5")
 PORT          = int(os.getenv("PORT") or "5000")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
@@ -177,16 +182,19 @@ def compute_spam_score(data: dict) -> float:
 # ---------------------------------------------------------------------------
 # Email helper
 # ---------------------------------------------------------------------------
-def send_email(to: str, subject: str, body: str):
+def send_email(to: str, subject: str, body: str, reply_to: str = None):
     if not SMTP_USER or not SMTP_PASS:
         log.warning("SMTP not configured — skipping email")
         return
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.utils import formataddr
     msg = MIMEMultipart()
-    msg["From"] = SMTP_USER
+    msg["From"] = formataddr((FROM_NAME.strip(), FROM_EMAIL)) if FROM_NAME.strip() else FROM_EMAIL
     msg["To"] = to
     msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg.attach(MIMEText(body, "plain"))
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
@@ -266,7 +274,7 @@ def api_lead():
                 f"Message:       {lead.message or 'N/A'}\n"
                 f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
             )
-            send_email(NOTIFY_EMAIL, f"New Lead: {lead.name}", body)
+            send_email(NOTIFY_EMAIL, f"New Lead: {lead.name}", body, reply_to=lead.email)
     except SQLAlchemyError as exc:
         log.error("DB error saving lead in /api/lead: %s", exc)
         # DB save failed — still notify via email so no submission is lost
@@ -282,7 +290,7 @@ def api_lead():
             f"Price range:   {data.get('priceRange', 'N/A')}\n"
             f"Message:       {data.get('message', 'N/A')}\n"
         )
-        send_email(NOTIFY_EMAIL, f"New Lead (DB error): {data.get('name', 'Unknown')}", body)
+        send_email(NOTIFY_EMAIL, f"New Lead (DB error): {data.get('name', 'Unknown')}", body, reply_to=data.get('email'))
 
     return jsonify({"ok": True}), 200
 
@@ -310,7 +318,7 @@ def api_contact():
                 f"Message: {lead.message or 'N/A'}\n"
                 f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
             )
-            send_email(NOTIFY_EMAIL, f"Contact: {lead.name}", body)
+            send_email(NOTIFY_EMAIL, f"Contact: {lead.name}", body, reply_to=lead.email)
     except SQLAlchemyError as exc:
         log.error("DB error saving contact lead in /api/contact: %s", exc)
         # DB save failed — still notify via email so no submission is lost
@@ -323,7 +331,7 @@ def api_contact():
             f"Source:  {data.get('source', 'contact-page')}\n"
             f"Message: {data.get('message', 'N/A')}\n"
         )
-        send_email(NOTIFY_EMAIL, f"Contact (DB error): {data.get('name', 'Unknown')}", body)
+        send_email(NOTIFY_EMAIL, f"Contact (DB error): {data.get('name', 'Unknown')}", body, reply_to=data.get('email'))
 
     return jsonify({"ok": True}), 200
 
