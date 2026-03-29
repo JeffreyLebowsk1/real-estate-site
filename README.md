@@ -17,6 +17,35 @@ Browser ──HTTPS──► Cloudflare (orange cloud)
                └── /api/*  ──►  Gunicorn :5000 (Flask)
 ```
 
+### Update the server with the latest code from `main`
+
+SSH into the Jetson and run these commands to pull the latest `main` branch and
+restart all services:
+
+```bash
+# 1. Pull latest code from main
+#    WARNING: git reset --hard will discard any uncommitted local changes on the
+#    server (e.g. manual edits). Your .env file is not tracked by git and is safe.
+cd /opt/real-estate-site
+sudo git fetch origin main
+sudo git reset --hard origin/main
+
+# 2. Update Python dependencies (if requirements changed)
+sudo /opt/real-estate-site/backend/venv/bin/pip install -q --upgrade \
+    -r /opt/real-estate-site/backend/requirements.txt
+
+# 3. Restart the API and web server
+sudo systemctl restart mdilworth-api
+sudo systemctl restart caddy
+
+# 4. Verify both services are running
+sudo systemctl status mdilworth-api --no-pager
+sudo systemctl status caddy --no-pager
+
+# 5. Quick health check
+curl -sf http://127.0.0.1:5000/api/health && echo " API OK" || echo " API FAILED"
+```
+
 ### Quick setup (Jetson Orin Nano)
 
 ```bash
