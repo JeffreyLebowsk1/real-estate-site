@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,7 +36,7 @@ load_dotenv()
 app = Flask(__name__)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-    "DATABASE_URL", "postgresql://mdilworth:changeme@localhost/mdilworth"
+    "DATABASE_URL", "sqlite:///leads.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
@@ -245,23 +246,39 @@ def api_lead():
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    lead = save_lead("lead", data)
-
-    if lead.status != "spam":
+    try:
+        lead = save_lead("lead", data)
+        if lead.status != "spam":
+            body = (
+                f"New lead from mdilworth.com\n"
+                f"{'='*40}\n"
+                f"Name:          {lead.name}\n"
+                f"Email:         {lead.email}\n"
+                f"Phone:         {lead.phone or 'N/A'}\n"
+                f"Interest:      {lead.interest}\n"
+                f"Location:      {lead.location}\n"
+                f"Property type: {lead.property_type or 'N/A'}\n"
+                f"Price range:   {lead.price_range or 'N/A'}\n"
+                f"Message:       {lead.message or 'N/A'}\n"
+                f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+            )
+            send_email(NOTIFY_EMAIL, f"New Lead: {lead.name}", body)
+    except SQLAlchemyError as exc:
+        log.error("DB error saving lead in /api/lead: %s", exc)
+        # DB save failed — still notify via email so no submission is lost
         body = (
-            f"New lead from mdilworth.com\n"
+            f"New lead from mdilworth.com (DB save failed)\n"
             f"{'='*40}\n"
-            f"Name:          {lead.name}\n"
-            f"Email:         {lead.email}\n"
-            f"Phone:         {lead.phone or 'N/A'}\n"
-            f"Interest:      {lead.interest}\n"
-            f"Location:      {lead.location}\n"
-            f"Property type: {lead.property_type or 'N/A'}\n"
-            f"Price range:   {lead.price_range or 'N/A'}\n"
-            f"Message:       {lead.message or 'N/A'}\n"
-            f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+            f"Name:          {data.get('name', 'N/A')}\n"
+            f"Email:         {data.get('email', 'N/A')}\n"
+            f"Phone:         {data.get('phone', 'N/A')}\n"
+            f"Interest:      {data.get('interest', 'N/A')}\n"
+            f"Location:      {data.get('location', 'N/A')}\n"
+            f"Property type: {data.get('propertyType', 'N/A')}\n"
+            f"Price range:   {data.get('priceRange', 'N/A')}\n"
+            f"Message:       {data.get('message', 'N/A')}\n"
         )
-        send_email(NOTIFY_EMAIL, f"New Lead: {lead.name}", body)
+        send_email(NOTIFY_EMAIL, f"New Lead (DB error): {data.get('name', 'Unknown')}", body)
 
     return jsonify({"ok": True}), 200
 
@@ -276,20 +293,33 @@ def api_contact():
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
-    lead = save_lead("contact", data)
-
-    if lead.status != "spam":
+    try:
+        lead = save_lead("contact", data)
+        if lead.status != "spam":
+            body = (
+                f"New contact from mdilworth.com\n"
+                f"{'='*40}\n"
+                f"Name:    {lead.name}\n"
+                f"Email:   {lead.email}\n"
+                f"Phone:   {lead.phone or 'N/A'}\n"
+                f"Source:  {lead.source or 'contact-page'}\n"
+                f"Message: {lead.message or 'N/A'}\n"
+                f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+            )
+            send_email(NOTIFY_EMAIL, f"Contact: {lead.name}", body)
+    except SQLAlchemyError as exc:
+        log.error("DB error saving contact lead in /api/contact: %s", exc)
+        # DB save failed — still notify via email so no submission is lost
         body = (
-            f"New contact from mdilworth.com\n"
+            f"New contact from mdilworth.com (DB save failed)\n"
             f"{'='*40}\n"
-            f"Name:    {lead.name}\n"
-            f"Email:   {lead.email}\n"
-            f"Phone:   {lead.phone or 'N/A'}\n"
-            f"Source:  {lead.source or 'contact-page'}\n"
-            f"Message: {lead.message or 'N/A'}\n"
-            f"\nView in admin: https://homes.mdilworth.com/admin/leads/{lead.id}"
+            f"Name:    {data.get('name', 'N/A')}\n"
+            f"Email:   {data.get('email', 'N/A')}\n"
+            f"Phone:   {data.get('phone', 'N/A')}\n"
+            f"Source:  {data.get('source', 'contact-page')}\n"
+            f"Message: {data.get('message', 'N/A')}\n"
         )
-        send_email(NOTIFY_EMAIL, f"Contact: {lead.name}", body)
+        send_email(NOTIFY_EMAIL, f"Contact (DB error): {data.get('name', 'Unknown')}", body)
 
     return jsonify({"ok": True}), 200
 
