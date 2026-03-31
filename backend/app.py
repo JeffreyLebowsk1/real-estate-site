@@ -25,7 +25,7 @@ import logging
 import subprocess
 from datetime import datetime, timezone
 
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import SQLAlchemyError
@@ -37,6 +37,7 @@ load_dotenv()
 # App + extensions
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
+SITE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URL", "sqlite:///leads.db"
@@ -383,6 +384,24 @@ def webhook_deploy():
 # ---------------------------------------------------------------------------
 from admin import admin_bp
 app.register_blueprint(admin_bp)
+
+
+# ---------------------------------------------------------------------------
+# Front-end static routes (served directly by Flask)
+# ---------------------------------------------------------------------------
+@app.route("/")
+def site_index():
+    return send_from_directory(SITE_ROOT, "index.html")
+
+
+@app.route("/<path:filename>")
+def site_static(filename: str):
+    # Keep API/admin/webhook namespaces reserved for backend routes.
+    if filename.startswith("api/") or filename.startswith("admin") or filename.startswith("webhook/"):
+        return jsonify({"error": "not found"}), 404
+
+    # Serve front-end assets and pages from the repo root.
+    return send_from_directory(SITE_ROOT, filename)
 
 
 # ---------------------------------------------------------------------------

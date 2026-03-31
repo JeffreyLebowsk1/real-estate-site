@@ -19,7 +19,7 @@ EnvironmentFile=/opt/real-estate-site/backend/.env
 RuntimeDirectory=mdilworth-api
 RuntimeDirectoryMode=0755
 ExecStart=/opt/real-estate-site/backend/venv/bin/gunicorn \
-    --bind 127.0.0.1:5000 \
+    --bind 127.0.0.1:5001 \
     --workers 2 \
     --worker-tmp-dir /run/mdilworth-api \
     --access-logfile - \
