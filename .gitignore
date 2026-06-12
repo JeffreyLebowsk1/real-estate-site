@@ -8,3 +8,6 @@ __pycache__/
 backend/instance/
 backend/*.db
 backend/**/__pycache__/
+backend/.env
+.wrangler/
+jetson_audio_vae_fix.py
