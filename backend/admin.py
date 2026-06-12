@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    session, flash, Response,
+    session, flash, Response, abort,
 )
 from werkzeug.security import check_password_hash
 
@@ -54,13 +54,28 @@ def login_required(f):
 # ---------------------------------------------------------------------------
 # Login / logout
 # ---------------------------------------------------------------------------
+_login_attempts = {}   # ip -> (count, first_attempt_time)
+_MAX_LOGIN_ATTEMPTS = 5
+_LOGIN_WINDOW = timedelta(minutes=15)
+
+
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
     error = None
     if request.method == "POST":
+        ip = request.remote_addr or "unknown"
+        now = datetime.now(timezone.utc)
+        count, first = _login_attempts.get(ip, (0, now))
+        if now - first > _LOGIN_WINDOW:
+            count, first = 0, now
+        if count >= _MAX_LOGIN_ATTEMPTS:
+            error = "Too many attempts. Try again later."
+            return render_template("admin/login.html", error=error)
+
         password = request.form.get("password", "")
         password_hash = os.getenv("ADMIN_PASSWORD_HASH", "")
         if password_hash and check_password_hash(password_hash, password):
+            _login_attempts.pop(ip, None)
             session["admin_logged_in"] = True
             session.permanent = True
             next_url = request.args.get("next", "")
@@ -71,6 +86,7 @@ def login():
             if next_url and not parsed.scheme and not parsed.netloc and "\\" not in next_url:
                 return redirect(next_url)
             return redirect(url_for("admin.dashboard"))
+        _login_attempts[ip] = (count + 1, first)
         error = "Incorrect password."
     return render_template("admin/login.html", error=error)
 
@@ -165,8 +181,10 @@ def leads():
 @admin_bp.route("/leads/<int:lead_id>")
 @login_required
 def lead_detail(lead_id):
-    from app import Lead
-    lead = Lead.query.get_or_404(lead_id)
+    from app import db, Lead
+    lead = db.session.get(Lead, lead_id)
+    if not lead:
+        abort(404)
     return render_template("admin/lead_detail.html",
                            lead=lead,
                            all_statuses=ALL_STATUSES,
@@ -180,7 +198,9 @@ def lead_detail(lead_id):
 @login_required
 def update_status(lead_id):
     from app import db, Lead
-    lead = Lead.query.get_or_404(lead_id)
+    lead = db.session.get(Lead, lead_id)
+    if not lead:
+        abort(404)
     new_status = request.form.get("status", "")
     if new_status in ALL_STATUSES:
         lead.status = new_status
@@ -198,7 +218,9 @@ def update_status(lead_id):
 @login_required
 def add_note(lead_id):
     from app import db, Lead, Note
-    lead = Lead.query.get_or_404(lead_id)
+    lead = db.session.get(Lead, lead_id)
+    if not lead:
+        abort(404)
     body = request.form.get("body", "").strip()
     if body:
         db.session.add(Note(lead_id=lead.id, body=body))
@@ -214,7 +236,9 @@ def add_note(lead_id):
 @login_required
 def reply(lead_id):
     from app import db, Lead, Message, send_email, SMTP_USER
-    lead = Lead.query.get_or_404(lead_id)
+    lead = db.session.get(Lead, lead_id)
+    if not lead:
+        abort(404)
 
     subject = request.form.get("subject", "").strip()
     body    = request.form.get("body", "").strip()

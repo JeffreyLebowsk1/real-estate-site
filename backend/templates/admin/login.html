@@ -13,6 +13,7 @@
           <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
         <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label for="password" class="form-label">Password</label>
             <input type="password" id="password" name="password"
